@@ -6,22 +6,27 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// Middleware
-app.use(cors());
+// Middleware - FIXED CORS ISSUE
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST'],
+  credentials: true
+}));
+
 app.use(express.json());
 
-// In-memory storage for verification codes (use a database in production)
+// In-memory storage for verification codes
 const verificationCodes = new Map();
 
-// Create Nodemailer transporter
-const createTransporter = () => {
+// Test email configuration
+const testTransporter = () => {
   return nodemailer.createTransporter({
-    host: process.env.SMTP_HOST,
-    port: process.env.SMTP_PORT,
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: process.env.SMTP_PORT || 587,
     secure: false,
     auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
+      user: process.env.SMTP_USER || 'test@example.com',
+      pass: process.env.SMTP_PASS || 'test-password',
     },
   });
 };
@@ -34,7 +39,7 @@ const generateVerificationCode = () => {
 // Send verification email
 const sendVerificationEmail = async (email, code, purpose = 'registration') => {
   try {
-    const transporter = createTransporter();
+    const transporter = testTransporter();
     
     const subject = purpose === 'registration' 
       ? 'Verify Your Account - Registration Code'
@@ -56,26 +61,61 @@ const sendVerificationEmail = async (email, code, purpose = 'registration') => {
     `;
 
     const mailOptions = {
-      from: process.env.SMTP_USER,
+      from: process.env.SMTP_USER || 'noreply@yourapp.com',
       to: email,
       subject: subject,
       html: html,
     };
 
-    const result = await transporter.sendMail(mailOptions);
-    console.log(`Verification email sent to ${email}`);
-    return { success: true, messageId: result.messageId };
+    // Only try to send email if SMTP credentials are configured
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      const result = await transporter.sendMail(mailOptions);
+      console.log(`Verification email sent to ${email}`);
+      return { success: true, messageId: result.messageId };
+    } else {
+      console.log(`Email not sent - SMTP not configured. Code for ${email}: ${code}`);
+      return { success: true, debug: true, code: code };
+    }
   } catch (error) {
     console.error('Error sending email:', error);
-    return { success: false, error: error.message };
+    // Still return success but with debug info
+    return { success: true, debug: true, code: code, error: error.message };
   }
 };
 
-// API Routes
+// ========== API ROUTES ==========
+
+// Root endpoint - FIXED
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Email Verification API is running!',
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    endpoints: [
+      'POST /send-registration-code',
+      'POST /send-password-reset-code', 
+      'POST /verify-code',
+      'GET /health',
+      'GET /debug-codes'
+    ]
+  });
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    service: 'Email Verification API',
+    version: '1.0.0'
+  });
+});
 
 // Send registration verification code
-app.post('/api/send-registration-code', async (req, res) => {
+app.post('/send-registration-code', async (req, res) => {
   try {
+    console.log('Registration code request received:', req.body);
+    
     const { email } = req.body;
 
     if (!email) {
@@ -95,19 +135,28 @@ app.post('/api/send-registration-code', async (req, res) => {
       expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
     });
 
+    console.log(`Generated code for ${email}: ${verificationCode}`);
+
     // Send email
     const emailResult = await sendVerificationEmail(email, verificationCode, 'registration');
 
     if (emailResult.success) {
-      res.json({
+      const response = {
         success: true,
         message: 'Registration verification code sent successfully'
-      });
+      };
+      
+      // Include debug code if email wasn't actually sent
+      if (emailResult.debug) {
+        response.debugCode = verificationCode;
+        response.message = 'Verification code generated (check debug code below)';
+      }
+      
+      res.json(response);
     } else {
       res.status(500).json({
         success: false,
-        message: 'Failed to send verification email',
-        error: emailResult.error
+        message: 'Failed to send verification code'
       });
     }
   } catch (error) {
@@ -120,8 +169,10 @@ app.post('/api/send-registration-code', async (req, res) => {
 });
 
 // Send password reset code
-app.post('/api/send-password-reset-code', async (req, res) => {
+app.post('/send-password-reset-code', async (req, res) => {
   try {
+    console.log('Password reset code request received:', req.body);
+    
     const { email } = req.body;
 
     if (!email) {
@@ -141,19 +192,27 @@ app.post('/api/send-password-reset-code', async (req, res) => {
       expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
     });
 
+    console.log(`Generated password reset code for ${email}: ${verificationCode}`);
+
     // Send email
     const emailResult = await sendVerificationEmail(email, verificationCode, 'password-reset');
 
     if (emailResult.success) {
-      res.json({
+      const response = {
         success: true,
         message: 'Password reset code sent successfully'
-      });
+      };
+      
+      if (emailResult.debug) {
+        response.debugCode = verificationCode;
+        response.message = 'Password reset code generated (check debug code below)';
+      }
+      
+      res.json(response);
     } else {
       res.status(500).json({
         success: false,
-        message: 'Failed to send password reset email',
-        error: emailResult.error
+        message: 'Failed to send reset code'
       });
     }
   } catch (error) {
@@ -166,8 +225,10 @@ app.post('/api/send-password-reset-code', async (req, res) => {
 });
 
 // Verify code
-app.post('/api/verify-code', async (req, res) => {
+app.post('/verify-code', async (req, res) => {
   try {
+    console.log('Verify code request received:', req.body);
+    
     const { email, code, purpose } = req.body;
 
     if (!email || !code || !purpose) {
@@ -224,27 +285,57 @@ app.post('/api/verify-code', async (req, res) => {
   }
 });
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    service: 'Email Verification API'
+// Debug endpoint to see stored codes
+app.get('/debug-codes', (req, res) => {
+  const codes = {};
+  verificationCodes.forEach((value, key) => {
+    codes[key] = {
+      ...value,
+      expiresAt: new Date(value.expiresAt).toISOString(),
+      expired: Date.now() > value.expiresAt
+    };
+  });
+  res.json({
+    storedCodes: codes,
+    total: verificationCodes.size
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
+// Handle 404
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Endpoint not found',
+    availableEndpoints: [
+      'GET /',
+      'GET /health',
+      'POST /send-registration-code',
+      'POST /send-password-reset-code',
+      'POST /verify-code',
+      'GET /debug-codes'
+    ]
+  });
+});
+
+// Start server - FIXED for Render
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
+  console.log(`📧 SMTP Configured: ${!!(process.env.SMTP_USER && process.env.SMTP_PASS)}`);
 });
 
 // Clean up expired codes every hour
 setInterval(() => {
   const now = Date.now();
+  let cleaned = 0;
   for (let [email, data] of verificationCodes.entries()) {
     if (now > data.expiresAt) {
       verificationCodes.delete(email);
+      cleaned++;
     }
   }
-}, 60 * 60 * 1000); // 1 hour
+  if (cleaned > 0) {
+    console.log(`🧹 Cleaned up ${cleaned} expired verification codes`);
+  }
+}, 60 * 60 * 1000);

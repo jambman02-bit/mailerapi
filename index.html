@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Verification Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+
+        .card-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .card-header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .card-body {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 5px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-section {
+            display: none;
+        }
+
+        .form-section.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+
+        .code-inputs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .code-input {
+            flex: 1;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .timer {
+            text-align: center;
+            font-size: 14px;
+            color: #6c757d;
+            margin-bottom: 15px;
+        }
+
+        .resend-link {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .resend-link a {
+            color: #667eea;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .resend-link a:hover {
+            text-decoration: underline;
+        }
+
+        .resend-link a.disabled {
+            color: #6c757d;
+            cursor: not-allowed;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <h1>Email Verification</h1>
+                <p>Secure account registration and password recovery</p>
+            </div>
+            <div class="card-body">
+                <!-- Tab Navigation -->
+                <div class="tab-container">
+                    <div class="tab active" data-tab="registration">Registration</div>
+                    <div class="tab" data-tab="password-reset">Password Reset</div>
+                    <div class="tab" data-tab="verify">Verify Code</div>
+                </div>
+
+                <!-- Messages -->
+                <div id="message" class="message"></div>
+
+                <!-- Registration Form -->
+                <div id="registration-form" class="form-section active">
+                    <div class="form-group">
+                        <label for="reg-email">Email Address</label>
+                        <input type="email" id="reg-email" placeholder="Enter your email address">
+                    </div>
+                    <button class="btn btn-primary" onclick="sendRegistrationCode()">
+                        Send Verification Code
+                    </button>
+                </div>
+
+                <!-- Password Reset Form -->
+                <div id="password-reset-form" class="form-section">
+                    <div class="form-group">
+                        <label for="reset-email">Email Address</label>
+                        <input type="email" id="reset-email" placeholder="Enter your email address">
+                    </div>
+                    <button class="btn btn-secondary" onclick="sendPasswordResetCode()">
+                        Send Reset Code
+                    </button>
+                </div>
+
+                <!-- Verify Code Form -->
+                <div id="verify-form" class="form-section">
+                    <div class="form-group">
+                        <label for="verify-email">Email Address</label>
+                        <input type="email" id="verify-email" placeholder="Enter your email address">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="verify-purpose">Verification Purpose</label>
+                        <select id="verify-purpose" class="form-control">
+                            <option value="registration">Registration</option>
+                            <option value="password-reset">Password Reset</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Verification Code</label>
+                        <div class="code-inputs">
+                            <input type="text" class="code-input" maxlength="1" oninput="moveToNext(this, 1)">
+                            <input type="text" class="code-input" maxlength="1" oninput="moveToNext(this, 2)">
+                            <input type="text" class="code-input" maxlength="1" oninput="moveToNext(this, 3)">
+                            <input type="text" class="code-input" maxlength="1" oninput="moveToNext(this, 4)">
+                            <input type="text" class="code-input" maxlength="1" oninput="moveToNext(this, 5)">
+                            <input type="text" class="code-input" maxlength="1" oninput="moveToNext(this, 6)">
+                        </div>
+                    </div>
+
+                    <div class="timer" id="timer">
+                        Code expires in: <span id="countdown">10:00</span>
+                    </div>
+
+                    <button class="btn btn-success" onclick="verifyCode()">
+                        Verify Code
+                    </button>
+
+                    <div class="resend-link">
+                        <a id="resend-link" onclick="resendCode()">Resend Code</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+    // Configuration - Update this with your Render URL
+    const API_BASE_URL = 'https://mailerapi-wnxz.onrender.com';
+
+    // DOM Elements
+    const tabs = document.querySelectorAll('.tab');
+    const formSections = document.querySelectorAll('.form-section');
+    const messageEl = document.getElementById('message');
+    let countdownInterval;
+
+    // Tab Switching
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const targetTab = tab.getAttribute('data-tab');
+            
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            // Show corresponding form section
+            formSections.forEach(section => {
+                section.classList.remove('active');
+                if (section.id === `${targetTab}-form`) {
+                    section.classList.add('active');
+                }
+            });
+            
+            // Clear message
+            clearMessage();
+        });
+    });
+
+    // Utility Functions
+    function showMessage(text, type) {
+        messageEl.textContent = text;
+        messageEl.className = `message ${type}`;
+        messageEl.style.display = 'block';
+        
+        // Auto-hide success messages after 5 seconds
+        if (type === 'success') {
+            setTimeout(clearMessage, 5000);
+        }
+    }
+
+    function clearMessage() {
+        messageEl.style.display = 'none';
+        messageEl.className = 'message';
+    }
+
+    function getVerificationCode() {
+        const inputs = document.querySelectorAll('.code-input');
+        let code = '';
+        inputs.forEach(input => {
+            code += input.value;
+        });
+        return code;
+    }
+
+    function setVerificationCode(code) {
+        const inputs = document.querySelectorAll('.code-input');
+        inputs.forEach((input, index) => {
+            input.value = code[index] || '';
+        });
+    }
+
+    function moveToNext(input, nextIndex) {
+        const inputs = document.querySelectorAll('.code-input');
+        
+        if (input.value.length === 1 && nextIndex < inputs.length) {
+            inputs[nextIndex].focus();
+        }
+        
+        // Auto-backspace
+        if (input.value.length === 0 && nextIndex > 1) {
+            inputs[nextIndex - 2].focus();
+        }
+    }
+
+    function startTimer(duration = 600) {
+        let timer = duration;
+        const countdownEl = document.getElementById('countdown');
+        const resendLink = document.getElementById('resend-link');
+        
+        resendLink.classList.add('disabled');
+        
+        clearInterval(countdownInterval);
+        
+        countdownInterval = setInterval(() => {
+            const minutes = Math.floor(timer / 60);
+            const seconds = timer % 60;
+            
+            countdownEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (--timer < 0) {
+                clearInterval(countdownInterval);
+                resendLink.classList.remove('disabled');
+                countdownEl.textContent = 'Expired';
+            }
+        }, 1000);
+    }
+
+    // API Functions
+    async function sendRegistrationCode() {
+        const email = document.getElementById('reg-email').value.trim();
+        
+        if (!email) {
+            showMessage('Please enter your email address', 'error');
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            showMessage('Please enter a valid email address', 'error');
+            return;
+        }
+
+        try {
+            showMessage('Sending verification code...', 'info');
+            
+            const response = await fetch(`${API_BASE_URL}/send-registration-code`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email })
+            });
+
+            // Check if response is OK
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Verification code sent to your email!', 'success');
+                // Switch to verify tab and pre-fill email
+                document.getElementById('verify-email').value = email;
+                document.getElementById('verify-purpose').value = 'registration';
+                document.querySelector('[data-tab="verify"]').click();
+                startTimer();
+                
+                // If in development, show the code for testing
+                if (data.debugCode) {
+                    console.log('Debug code:', data.debugCode);
+                    showMessage(`Verification code: ${data.debugCode} (for testing)`, 'info');
+                }
+            } else {
+                showMessage(data.message || 'Failed to send verification code', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Network error. Please check if the server is running.', 'error');
+        }
+    }
+
+    async function sendPasswordResetCode() {
+        const email = document.getElementById('reset-email').value.trim();
+        
+        if (!email) {
+            showMessage('Please enter your email address', 'error');
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            showMessage('Please enter a valid email address', 'error');
+            return;
+        }
+
+        try {
+            showMessage('Sending password reset code...', 'info');
+            
+            const response = await fetch(`${API_BASE_URL}/send-password-reset-code`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Password reset code sent to your email!', 'success');
+                // Switch to verify tab and pre-fill email
+                document.getElementById('verify-email').value = email;
+                document.getElementById('verify-purpose').value = 'password-reset';
+                document.querySelector('[data-tab="verify"]').click();
+                startTimer();
+                
+                if (data.debugCode) {
+                    console.log('Debug code:', data.debugCode);
+                    showMessage(`Password reset code: ${data.debugCode} (for testing)`, 'info');
+                }
+            } else {
+                showMessage(data.message || 'Failed to send reset code', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Network error. Please check if the server is running.', 'error');
+        }
+    }
+
+    async function verifyCode() {
+        const email = document.getElementById('verify-email').value.trim();
+        const purpose = document.getElementById('verify-purpose').value;
+        const code = getVerificationCode();
+
+        if (!email) {
+            showMessage('Please enter your email address', 'error');
+            return;
+        }
+
+        if (!isValidEmail(email)) {
+            showMessage('Please enter a valid email address', 'error');
+            return;
+        }
+
+        if (code.length !== 6) {
+            showMessage('Please enter the complete 6-digit code', 'error');
+            return;
+        }
+
+        try {
+            showMessage('Verifying code...', 'info');
+            
+            const response = await fetch(`${API_BASE_URL}/verify-code`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    email, 
+                    code, 
+                    purpose 
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('Code verified successfully!', 'success');
+                clearInterval(countdownInterval);
+                
+                // Redirect or proceed based on purpose
+                setTimeout(() => {
+                    if (purpose === 'registration') {
+                        alert('Registration completed successfully!');
+                        // Redirect to login or dashboard
+                    } else {
+                        alert('Password reset verified! You can now set a new password.');
+                        // Show password reset form
+                    }
+                }, 1000);
+            } else {
+                showMessage(data.message || 'Verification failed', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Network error. Please try again.', 'error');
+        }
+    }
+
+    async function resendCode() {
+        const email = document.getElementById('verify-email').value.trim();
+        const purpose = document.getElementById('verify-purpose').value;
+        
+        if (!email) {
+            showMessage('Please enter your email address first', 'error');
+            return;
+        }
+
+        const endpoint = purpose === 'registration' 
+            ? 'send-registration-code' 
+            : 'send-password-reset-code';
+
+        try {
+            showMessage('Resending code...', 'info');
+            
+            const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ email })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                showMessage('New code sent to your email!', 'success');
+                setVerificationCode('');
+                document.querySelector('.code-input').focus();
+                startTimer();
+                
+                if (data.debugCode) {
+                    console.log('New debug code:', data.debugCode);
+                    showMessage(`New verification code: ${data.debugCode} (for testing)`, 'info');
+                }
+            } else {
+                showMessage(data.message || 'Failed to resend code', 'error');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            showMessage('Network error. Please try again.', 'error');
+        }
+    }
+
+    // Helper function to validate email
+    function isValidEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+        // Focus first code input when verify form is shown
+        document.querySelector('[data-tab="verify"]').addEventListener('click', function() {
+            setTimeout(() => {
+                document.querySelector('.code-input').focus();
+            }, 100);
+        });
+        
+        // Test API connection
+        testAPIConnection();
+    });
+
+    // Test API connection
+    async function testAPIConnection() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/health`);
+            if (response.ok) {
+                console.log('API connection successful');
+            } else {
+                console.log('API connection failed');
+            }
+        } catch (error) {
+            console.log('API connection failed:', error);
+        }
+    }
+</script>
+</body>
+</html>
