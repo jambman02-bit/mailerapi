@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: email-verification-api
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SMTP_HOST
+        fromService:
+          name: smtp-credentials
+          type: secret
+      - key: SMTP_USER
+        fromService:
+          name: smtp-credentials
+          type: secret
+      - key: SMTP_PASS
+        fromService:
+          name: smtp-credentials
+          type: secret
